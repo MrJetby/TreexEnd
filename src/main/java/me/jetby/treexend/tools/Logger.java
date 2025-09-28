@@ -5,19 +5,20 @@ import org.bukkit.Bukkit;
 
 @UtilityClass
 public class Logger {
-    private static final java.util.logging.Logger logger = Bukkit.getLogger();
 
     public void warn(String message) {
-        logger.warning("§7[§eTreexEnd§7] §6WARN §e" + message);
+        Bukkit.getConsoleSender().sendMessage("§e[TreexEnd] "+ message);
     }
-
     public void info(String message) {
-        logger.info("§7[§aTreexEnd§7] §aINFO §f" + message);
+        Bukkit.getConsoleSender().sendMessage("§a[TreexEnd] §f"+ message);
     }
     public void success(String message) {
-        logger.info("§7[§aTreexEnd§7] §aINFO §a" + message);
+        Bukkit.getConsoleSender().sendMessage("§a[TreexEnd] §a"+ message);
     }
     public void error(String message) {
-        logger.warning("§7[§cTreexEnd§7] §4ERROR §c" + message);
+        Bukkit.getConsoleSender().sendMessage("§c[TreexEnd] "+ message);
+    }
+    public void msg(String message) {
+        Bukkit.getConsoleSender().sendMessage("§6[TreexEnd] §f"+ message);
     }
 }

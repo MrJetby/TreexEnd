@@ -42,6 +42,11 @@ public class SchedulerHandler {
 
         calculateTimeToStart();
 
+        if (time_to_start == Long.MAX_VALUE) {
+            Logger.warn("Cannot start scheduler: no valid event time.");
+            return;
+        }
+
         runner.startTimer(() -> {
 
             for (int i = 0; i < scheduler.getPreStartTimes().size(); i++) {
@@ -59,6 +64,8 @@ public class SchedulerHandler {
                 startEvent();
                 calculateTimeToStart();
                 task = runner.getTaskdId();
+                runner.cancelTask(task);
+                task = 0;
             }
         }, 0, 20L);
     }
@@ -74,35 +81,54 @@ public class SchedulerHandler {
             }
         }
 
+        if (nextTime == Long.MAX_VALUE) {
+            plugin.getLogger().warning("No valid future event time found in scheduler!");
+            return;
+        }
+
         time_to_start = nextTime;
     }
 
     private long parseTimeString(String timeStr) {
-        String[] parts = timeStr.split(":");
-        if (parts.length < 2) {
-            return Long.MAX_VALUE;
-        }
-        int hour = Integer.parseInt(parts[0]);
-        int minute = Integer.parseInt(parts[1]);
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(scheduler.getTimezone()));
-        ZonedDateTime next = now.withHour(hour)
-                .withMinute(minute)
-                .withSecond(0)
-                .truncatedTo(ChronoUnit.SECONDS);
-        if (parts.length == 3) {
-            String dayOfWeek = parts[2];
-            while (!next.getDayOfWeek().toString().equalsIgnoreCase(dayOfWeek)) {
+        try {
+            String[] parts = timeStr.split(":");
+            if (parts.length < 2) {
+                throw new IllegalArgumentException("Invalid time format: " + timeStr);
+            }
+
+            int hour = Integer.parseInt(parts[0]);
+            int minute = Integer.parseInt(parts[1]);
+
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                throw new IllegalArgumentException("Invalid hour/minute: " + timeStr);
+            }
+
+            ZonedDateTime now = ZonedDateTime.now(ZoneId.of(scheduler.getTimezone()));
+            ZonedDateTime next = now.withHour(hour)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .truncatedTo(ChronoUnit.SECONDS);
+
+            if (parts.length == 3) {
+                String dayOfWeek = parts[2];
+                while (!next.getDayOfWeek().toString().equalsIgnoreCase(dayOfWeek)) {
+                    next = next.plusDays(1);
+                }
+                if (next.isBefore(now)) {
+                    next = next.plusWeeks(1);
+                }
+                return next.toEpochSecond();
+            }
+
+            if (next.isBefore(now)) {
                 next = next.plusDays(1);
             }
-            if (next.isBefore(now)) {
-                next = next.plusWeeks(1);
-            }
             return next.toEpochSecond();
+
+        } catch (Exception e) {
+            Logger.warn("Failed to parse time: " + timeStr + " (" + e.getMessage() + ")");
+            return Long.MAX_VALUE;
         }
-        if (next.isBefore(now)) {
-            next = next.plusDays(1);
-        }
-        return next.toEpochSecond();
     }
 
     private void startEvent() {

@@ -3,7 +3,6 @@ package me.jetby.treexend.tools.task;
 import me.jetby.treexend.Main;
 import me.jetby.treexend.configurations.Config;
 import me.jetby.treexend.tools.Logger;
-import me.jetby.treexend.tools.NBTUtil;
 import me.jetby.treexend.tools.storage.EggPrices;
 import me.jetby.treexend.tools.storage.StorageType;
 import org.bukkit.*;
@@ -11,13 +10,10 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
 import java.util.Map;
-
 
 
 public final class TaskManager {

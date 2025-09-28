@@ -266,6 +266,7 @@ public class Database implements StorageType {
 
     @Override
     public void removeCache(@NotNull Location location) {
+        if (location == null) return;
         locations.remove(location);
         eggPrices.remove(location);
         queueTask(() -> {

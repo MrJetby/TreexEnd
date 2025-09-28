@@ -4,6 +4,7 @@ import me.jetby.treexend.Main;
 import me.jetby.treexend.configurations.Config;
 import me.jetby.treexend.tools.Event;
 import me.jetby.treexend.tools.LocationHandler;
+import me.jetby.treexend.tools.Logger;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -33,9 +34,12 @@ public class EndPortal implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        if (event.isEndPortalStatus()) return;
-        if (e.getPlayer().hasPermission("treexend.tpbypass")) return;
-        e.getPlayer().teleport(LocationHandler.deserializeLocation(config.getEndCloseTeleport(), plugin));
+        Player player = e.getPlayer();
+
+        if (!event.isEndPortalStatus() &&
+                !player.hasPermission("treexend.tpbypass") && player.getWorld().getEnvironment().equals(World.Environment.THE_END)) {
+            player.teleport(LocationHandler.deserializeLocation(config.getEndCloseTeleport(), plugin));
+        }
     }
 
     @EventHandler

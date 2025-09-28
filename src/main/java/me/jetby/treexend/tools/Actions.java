@@ -168,7 +168,6 @@ public class Actions {
                         }
                     }
                 });
-
                 break;
             }
             case "[CONSOLE]": {
@@ -211,7 +210,7 @@ public class Actions {
                     player.playSound(player.getLocation(), Sound.valueOf(args[1]), volume, pitch);
                 } else {
                     for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                        onlinePlayers.playSound(player.getLocation(), Sound.valueOf(args[1]), volume, pitch);
+                        onlinePlayers.playSound(onlinePlayers.getLocation(), Sound.valueOf(args[1]), volume, pitch);
                     }
                 }
                 break;

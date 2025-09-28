@@ -165,9 +165,9 @@ public class Config {
         dragonEggPrizes = getOrDefaultList(configuration, "dragon-egg.prizes", dragonEggPrizesDefault);
 
         listenersDropOnQuit = configuration.getBoolean("listeners.dropOnQuit", true);
-        listenersPlace = configuration.getBoolean("dragon-egg.glowing", true);
+        listenersPlace = configuration.getBoolean("dragon-egg.place", true);
         listenersTeleportOnPortalJoin = configuration.getBoolean("teleportOnPortalJoin", false);
-        dragonEggGlowing = configuration.getBoolean("listeners.place", true);
+        dragonEggGlowing = configuration.getBoolean("listeners.glowing", true);
 
         storageType = configuration.getString("storage.type", "YAML");
         storageHost = configuration.getString("storage.host", "localhost");

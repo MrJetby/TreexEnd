@@ -55,6 +55,7 @@ dragon-egg:
     update-interval: 60 # Поднимать цену каждые 60 секунд
     update-amount: 5 # Например: если цена яйца 100 то каждые 60 секунд к нему будет прибавляться +5
   name: "&#FB0783Яйцо дракона"
+  anti-stack: true
   glowing: false
   lore:
     - ""

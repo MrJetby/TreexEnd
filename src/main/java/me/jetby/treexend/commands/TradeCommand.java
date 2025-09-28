@@ -2,10 +2,7 @@ package me.jetby.treexend.commands;
 
 import me.jetby.treexend.Main;
 import me.jetby.treexend.configurations.Config;
-import me.jetby.treexend.tools.Actions;
 import me.jetby.treexend.tools.NBTUtil;
-import me.jetby.treexend.tools.colorizer.Colorize;
-import me.jetby.treexend.tools.colorizer.ColorizerType;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 import org.bukkit.Material;

@@ -4,7 +4,7 @@
   <groupId>me.jetby</groupId>
   <artifactId>TreexEnd</artifactId>
   <name>TreexEnd</name>
-  <version>1.4</version>
+  <version>1.4.2</version>
   <build>
     <resources>
       <resource>
