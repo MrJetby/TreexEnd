@@ -20,6 +20,7 @@ scheduler:
     # [CREATE_DRAGON] Заспавнить дракона
     # [REMOVE_DRAGON] Удалить дракона если он живой
     # [SET_DURATION] Поставить время через которое выполнится onEnd
+    # [WIPE] обнулить энд с драконом, полезно когда у Вас Энд открывается несколько раз за вайп
     #
     # [MESSAGE] Send text to player
     # [PLAYER] Execute command on behalf of the player

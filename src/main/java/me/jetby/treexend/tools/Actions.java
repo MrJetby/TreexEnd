@@ -5,14 +5,12 @@ import me.jetby.treexend.Main;
 import me.jetby.treexend.tools.colorizer.Colorize;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
+import java.io.File;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -27,36 +25,75 @@ public class Actions {
     }
 
     public void execute(List<String> commands) {
-        executeWithDelay(null, commands, 0);
-    }
-    public void execute(Player player, List<String> commands) {
-        executeWithDelay(player, commands, 0);
+        executeCommands(null, commands, 0);
     }
 
-    private void executeWithDelay(Player player, List<String> commands, int index) {
+    public void execute(Player player, List<String> commands) {
+        executeCommands(player, commands, 0);
+    }
+
+    private boolean deleteWorldFolder(File folder) {
+        if (folder.exists()) {
+            File[] files = folder.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        deleteWorldFolder(file);
+                    } else {
+                        file.delete();
+                    }
+                }
+            }
+        }
+        return folder.delete();
+    }
+
+    private void executeCommands(Player player, List<String> commands, int index) {
         if (index >= commands.size()) return;
 
         String command = commands.get(index);
-        String[] args = command.split(" ");
-        String withoutCMD = command.replace(args[0] + " ", "");
 
-        if (args[0].equalsIgnoreCase("[DELAY]")) {
-            int delayTicks = Integer.parseInt(args[1]);
-            plugin.getRunner().runLater(() -> executeWithDelay(player, commands, index + 1), delayTicks);
+        if (command.trim().toUpperCase().startsWith("[DELAY]")) {
+            String[] args = command.split(" ");
+            if (args.length >= 2) {
+                try {
+                    int delayTicks = Integer.parseInt(args[1]);
+                    plugin.getRunner().runLater(() -> executeCommands(player, commands, index + 1), delayTicks);
+                    return;
+                } catch (NumberFormatException e) {
+                    Logger.warn("Invalid delay value: " + command);
+                }
+            }
+
+            executeCommands(player, commands, index + 1);
             return;
         }
-        switch (args[0].toUpperCase()) {
-            case "[MESSAGE]", "[MSG]", "[MESSAGE_ALL]": {
 
-                if (player!=null) {
-                    player.sendMessage(Colorize.hex(PlaceholderAPI.setPlaceholders(null, withoutCMD)));
+        if (command.trim().toUpperCase().startsWith("[WIPE]")) {
+            List<String> postWipeCommands = commands.subList(index + 1, commands.size());
+            handleWipe(player, postWipeCommands);
+            return;
+        }
+
+        executeSingleCommand(player, command);
+
+        executeCommands(player, commands, index + 1);
+    }
+
+    private void executeSingleCommand(Player player, String command) {
+        String[] args = command.split(" ", 2);
+        String action = args[0].toUpperCase();
+        String withoutCMD = args.length > 1 ? args[1] : "";
+
+        switch (action) {
+            case "[MESSAGE]", "[MSG]", "[MESSAGE_ALL]": {
+                if (player != null) {
+                    player.sendMessage(Colorize.hex(PlaceholderAPI.setPlaceholders(player, withoutCMD)));
                 } else {
-                    for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                        onlinePlayers.sendMessage(Colorize.hex(PlaceholderAPI.setPlaceholders(onlinePlayers, withoutCMD)));
+                    for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                        onlinePlayer.sendMessage(Colorize.hex(PlaceholderAPI.setPlaceholders(onlinePlayer, withoutCMD)));
                     }
                 }
-
-
                 break;
             }
             case "[PORTAL_OPEN]": {
@@ -76,212 +113,262 @@ public class Actions {
                 break;
             }
             case "[SET_DURATION]": {
-                event.start(Integer.parseInt(PlaceholderAPI.setPlaceholders(player, withoutCMD)));
+                try {
+                    int duration = Integer.parseInt(PlaceholderAPI.setPlaceholders(player, withoutCMD));
+                    event.start(duration);
+                } catch (NumberFormatException e) {
+                    Logger.warn("Invalid duration: " + withoutCMD);
+                }
                 break;
             }
             case "[CREATE_DRAGON]": {
                 World world = Bukkit.getWorld("world_the_end");
                 if (world != null) {
                     Location location = new Location(world, 0, 100, 0);
-                   EnderDragon dragon = (EnderDragon) world.spawnEntity(location, EntityType.ENDER_DRAGON);
-                   dragon.setPhase(EnderDragon.Phase.CIRCLING);
+                    world.spawnEntity(location, EntityType.ENDER_DRAGON);
                 } else {
-                    Bukkit.getLogger().log(Level.WARNING, "§cМир 'world_the_end' не найден.");
+                    Logger.warn("Мир 'world_the_end' не найден.");
+                }
+                break;
+            }
+            case "[REMOVE_DRAGON]": {
+                World world = Bukkit.getWorld("world_the_end");
+                if (world != null) {
+                    for (org.bukkit.entity.EnderDragon dragon : world.getEntitiesByClass(org.bukkit.entity.EnderDragon.class)) {
+                        dragon.remove();
+                    }
                 }
                 break;
             }
             case "[TELEPORT]", "[TP]": {
-                String[] parts = withoutCMD.split(" ");
-                if (parts.length == 4) {
-                    try {
-                        String worldName = parts[0];
-                        double x = Double.parseDouble(parts[1]);
-                        double y = Double.parseDouble(parts[2]);
-                        double z = Double.parseDouble(parts[3]);
-
-                        World world = Bukkit.getWorld(worldName);
-                        if (world == null) {
-                            Bukkit.getLogger().warning("Мир " + worldName + " не найден");
-                            break;
-                        }
-
-                        Location location = new Location(world, x, y, z);
-
-                        if (player!=null) {
-                            player.teleport(location);
-                        } else {
-                            for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                                onlinePlayers.teleport(location);
-                            }
-                        }
-
-                    } catch (NumberFormatException e) {
-                        Bukkit.getLogger().warning("Ошибка парсинга координат");
-                        break;
-                    }
-                }
-                if (parts.length >= 6) {
-                    try {
-                        String worldName = parts[0];
-                        double x = Double.parseDouble(parts[1]);
-                        double y = Double.parseDouble(parts[2]);
-                        double z = Double.parseDouble(parts[3]);
-                        float yaw = Float.parseFloat(parts[4]);
-                        float pitch = Float.parseFloat(parts[5]);
-
-                        World world = Bukkit.getWorld(worldName);
-                        if (world == null) {
-                            Bukkit.getLogger().warning("Мир " + worldName + " не найден");
-                            break;
-                        }
-
-                        Location location = new Location(world, x, y, z, yaw, pitch);
-
-                        Bukkit.getScheduler().runTask(plugin, ()-> {
-                            if (player!=null) {
-                                player.teleport(location);
-                            } else {
-                                for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                                    onlinePlayers.teleport(location);
-                                }
-                            }
-                        });
-
-                    } catch (NumberFormatException e) {
-                        Bukkit.getLogger().warning("Ошибка парсинга координат");
-                        break;
-                    }
-                } else {
-                    Bukkit.getLogger().warning("Некорректные данные для телепорта");
-                    break;
-                }
+                handleTeleport(player, withoutCMD);
                 break;
             }
             case "[PLAYER]": {
-                String finalWithoutCMD = withoutCMD;
-                Bukkit.getScheduler().runTask(plugin, ()-> {
-                    if (player!=null) {
-                        player.chat("/"+finalWithoutCMD.replace("%player%", player.getName()));
-                    } else {
-                        for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                            onlinePlayers.chat("/"+finalWithoutCMD.replace("%player%", player.getName()));
-                        }
+                String finalCommand = withoutCMD.replace("%player%", player != null ? player.getName() : "");
+                if (player != null) {
+                    player.chat("/" + finalCommand);
+                } else {
+                    for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                        onlinePlayer.chat("/" + finalCommand.replace("%player%", onlinePlayer.getName()));
                     }
-                });
+                }
                 break;
             }
             case "[CONSOLE]": {
-                String finalWithoutCMD = withoutCMD;
-                Bukkit.getScheduler().runTask(plugin, ()-> {
-                    if (player!=null) {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), Colorize.hex(PlaceholderAPI.setPlaceholders(player, finalWithoutCMD.replace("%player%", player.getName()))));
-                    } else {
-                        for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), Colorize.hex(PlaceholderAPI.setPlaceholders(onlinePlayers, finalWithoutCMD.replace("%player%", onlinePlayers.getName()))));
-                        }
+                String finalCommand = Colorize.hex(PlaceholderAPI.setPlaceholders(player, withoutCMD));
+                if (player != null) {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand.replace("%player%", player.getName()));
+                } else {
+                    for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                        String playerCommand = finalCommand.replace("%player%", onlinePlayer.getName());
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), playerCommand);
                     }
-                });
+                }
                 break;
             }
             case "[ACTIONBAR]": {
-                if (player!=null) {
-                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(Colorize.hex(withoutCMD
-                            .replace("%player%", player.getName()))));
+                String message = Colorize.hex(withoutCMD);
+                if (player != null) {
+                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message.replace("%player%", player.getName())));
                 } else {
-                    for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                        onlinePlayers.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(Colorize.hex(withoutCMD
-                                .replace("%player%", player.getName()))));
+                    for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                        onlinePlayer.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message.replace("%player%", onlinePlayer.getName())));
                     }
                 }
                 break;
             }
             case "[SOUND]": {
-                float volume = 1.0f;
-                float pitch = 1.0f;
-                for (String arg : args) {
-                    if (arg.startsWith("-volume:")) {
-                        volume = Float.parseFloat(arg.replace("-volume:", ""));
-                        continue;
-                    }
-                    if (!arg.startsWith("-pitch:")) continue;
-                    pitch = Float.parseFloat(arg.replace("-pitch:", ""));
-                }
-                if (player!=null) {
-                    player.playSound(player.getLocation(), Sound.valueOf(args[1]), volume, pitch);
-                } else {
-                    for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                        onlinePlayers.playSound(onlinePlayers.getLocation(), Sound.valueOf(args[1]), volume, pitch);
-                    }
-                }
+                handleSound(player, withoutCMD);
                 break;
             }
             case "[EFFECT]": {
-                int strength = 0;
-                int duration = 1;
-                for (String arg : args) {
-                    if (arg.startsWith("-strength:")) {
-                        strength = Integer.parseInt(arg.replace("-strength:", ""));
-                        continue;
-                    }
-                    if (!arg.startsWith("-duration:")) continue;
-                    duration = Integer.parseInt(arg.replace("-duration:", ""));
-                }
-                PotionEffectType effectType = PotionEffectType.getByName(args[1]);
-                if (effectType == null) {
-                    return;
-                }
-                if (player!=null) {
-                    if (player.hasPotionEffect(effectType)) {
-                        return;
-                    }
-                    player.addPotionEffect(new PotionEffect(effectType, duration * 20, strength));
-                } else {
-                    for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                        if (onlinePlayers.hasPotionEffect(effectType)) {
-                            continue;
-                        }
-                        onlinePlayers.addPotionEffect(new PotionEffect(effectType, duration * 20, strength));
-                    }
-                }
+                handleEffect(player, withoutCMD);
+                break;
+            }
+            case "[WIPE]": {
+                Logger.warn("Action [WIPE] called outside of command list. No post-wipe actions will be executed.");
+                handleWipe(player, null);
                 break;
             }
             case "[TITLE]": {
-                String title = "";
-                String subTitle = "";
-                int fadeIn = 1;
-                int stay = 3;
-                int fadeOut = 1;
-                for (String arg : args) {
-                    if (arg.startsWith("-fadeIn:")) {
-                        fadeIn = Integer.parseInt(arg.replace("-fadeIn:", ""));
-                        withoutCMD = withoutCMD.replace(arg, "");
-                        continue;
-                    }
-                    if (arg.startsWith("-stay:")) {
-                        stay = Integer.parseInt(arg.replace("-stay:", ""));
-                        withoutCMD = withoutCMD.replace(arg, "");
-                        continue;
-                    }
-                    if (!arg.startsWith("-fadeOut:")) continue;
-                    fadeOut = Integer.parseInt(arg.replace("-fadeOut:", ""));
-                    withoutCMD = withoutCMD.replace(arg, "");
-                }
-                String[] message = Colorize.hex(withoutCMD).split(";");
-                if (message.length >= 1) {
-                    title = message[0];
-                    if (message.length >= 2) {
-                        subTitle = message[1];
-                    }
-                }
-                if (player!=null) {
-                    player.sendTitle(title, subTitle, fadeIn * 20, stay * 20, fadeOut * 20);
-                } else {
-                    for (Player onlinePlayers : Bukkit.getOnlinePlayers()) {
-                        onlinePlayers.sendTitle(title, subTitle, fadeIn * 20, stay * 20, fadeOut * 20);
-                    }
-                }
+                handleTitle(player, withoutCMD);
+                break;
+            }
+            default: {
+                Logger.warn("Unknown action: " + action);
+                break;
             }
         }
-        executeWithDelay(player, commands, index + 1);
+    }
+
+    private void handleTeleport(Player player, String params) {
+        String[] parts = params.split(" ");
+        try {
+            World world = Bukkit.getWorld(parts[0]);
+            if (world == null) {
+                Logger.warn("Мир " + parts[0] + " не найден");
+                return;
+            }
+
+            double x = Double.parseDouble(parts[1]);
+            double y = Double.parseDouble(parts[2]);
+            double z = Double.parseDouble(parts[3]);
+
+            Location location;
+            if (parts.length >= 6) {
+                float yaw = Float.parseFloat(parts[4]);
+                float pitch = Float.parseFloat(parts[5]);
+                location = new Location(world, x, y, z, yaw, pitch);
+            } else {
+                location = new Location(world, x, y, z);
+            }
+
+            if (player != null) {
+                player.teleport(location);
+            } else {
+                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                    onlinePlayer.teleport(location);
+                }
+            }
+        } catch (Exception e) {
+            Logger.warn("Ошибка парсинга координат для телепорта: " + params);
+        }
+    }
+
+    private void handleSound(Player player, String params) {
+        String[] parts = params.split(" ");
+        try {
+            Sound sound = Sound.valueOf(parts[0]);
+            float volume = 1.0f;
+            float pitch = 1.0f;
+
+            for (int i = 1; i < parts.length; i++) {
+                if (parts[i].startsWith("-volume:")) {
+                    volume = Float.parseFloat(parts[i].replace("-volume:", ""));
+                } else if (parts[i].startsWith("-pitch:")) {
+                    pitch = Float.parseFloat(parts[i].replace("-pitch:", ""));
+                }
+            }
+
+            if (player != null) {
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            } else {
+                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                    onlinePlayer.playSound(onlinePlayer.getLocation(), sound, volume, pitch);
+                }
+            }
+        } catch (Exception e) {
+            Logger.warn("Ошибка воспроизведения звука: " + params);
+        }
+    }
+
+    private void handleEffect(Player player, String params) {
+        String[] parts = params.split(" ");
+        try {
+            PotionEffectType effectType = PotionEffectType.getByName(parts[0]);
+            if (effectType == null) {
+                Logger.warn("Эффект не найден: " + parts[0]);
+                return;
+            }
+
+            int duration = 60;
+            int amplifier = 0;
+
+            for (int i = 1; i < parts.length; i++) {
+                if (parts[i].startsWith("-duration:")) {
+                    duration = Integer.parseInt(parts[i].replace("-duration:", ""));
+                } else if (parts[i].startsWith("-strength:")) {
+                    amplifier = Integer.parseInt(parts[i].replace("-strength:", "")) - 1;
+                }
+            }
+
+            PotionEffect effect = new PotionEffect(effectType, duration * 20, amplifier);
+
+            if (player != null) {
+                player.addPotionEffect(effect);
+            } else {
+                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                    onlinePlayer.addPotionEffect(effect);
+                }
+            }
+        } catch (Exception e) {
+            Logger.warn("Ошибка применения эффекта: " + params);
+        }
+    }
+
+    private void handleWipe(Player player, List<String> postWipeCommands) {
+        World endWorld = Bukkit.getWorld("world_the_end");
+        if (endWorld != null) {
+
+            for (Player onlinePlayer : endWorld.getPlayers()) {
+                onlinePlayer.teleport(plugin.getServer().getWorlds().get(0).getSpawnLocation());
+            }
+
+            if (Bukkit.unloadWorld(endWorld, false)) {
+                Logger.info("Мир world_the_end успешно выгружен.");
+
+                plugin.getRunner().runAsync(() -> {
+                    File worldFolder = new File(Bukkit.getServer().getWorldContainer(), "world_the_end");
+                    if (deleteWorldFolder(worldFolder)) {
+                        Logger.info("Папка мира world_the_end успешно удалена.");
+
+                        plugin.getRunner().run(() -> {
+                            World newEndWorld = Bukkit.createWorld(new WorldCreator("world_the_end").environment(World.Environment.THE_END));
+                            if (newEndWorld != null) {
+                                Logger.info("Мир world_the_end успешно пересоздан.");
+
+                                if (postWipeCommands != null && !postWipeCommands.isEmpty()) {
+                                    executeCommands(player, postWipeCommands, 0);
+                                }
+                            } else {
+                                Logger.warn("Не удалось пересоздать мир world_the_end.");
+                            }
+                        });
+                    } else {
+                        Logger.warn("Не удалось удалить папку мира world_the_end.");
+                    }
+                });
+            } else {
+                Logger.warn("Не удалось выгрузить мир world_the_end.");
+            }
+        } else {
+            Logger.warn("Мир 'world_the_end' не найден.");
+        }
+    }
+
+    private void handleTitle(Player player, String params) {
+        String[] parts = params.split(" ");
+        String title = "";
+        String subtitle = "";
+        int fadeIn = 10;
+        int stay = 70;
+        int fadeOut = 20;
+
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i].startsWith("-fadeIn:")) {
+                fadeIn = Integer.parseInt(parts[i].replace("-fadeIn:", ""));
+            } else if (parts[i].startsWith("-stay:")) {
+                stay = Integer.parseInt(parts[i].replace("-stay:", ""));
+            } else if (parts[i].startsWith("-fadeOut:")) {
+                fadeOut = Integer.parseInt(parts[i].replace("-fadeOut:", ""));
+            }
+        }
+
+        String[] messageParts = params.split(";");
+        if (messageParts.length >= 1) {
+            title = Colorize.hex(messageParts[0].replaceAll("-fadeIn:\\d+|-stay:\\d+|-fadeOut:\\d+", "").trim());
+            if (messageParts.length >= 2) {
+                subtitle = Colorize.hex(messageParts[1].replaceAll("-fadeIn:\\d+|-stay:\\d+|-fadeOut:\\d+", "").trim());
+            }
+        }
+
+        if (player != null) {
+            player.sendTitle(title, subtitle, fadeIn, stay, fadeOut);
+        } else {
+            for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                onlinePlayer.sendTitle(title, subtitle, fadeIn, stay, fadeOut);
+            }
+        }
     }
 }

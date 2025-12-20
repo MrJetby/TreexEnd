@@ -63,49 +63,42 @@ public class EnderDragon implements Listener {
         }
         return df.format(sortedEntries.get(number - 1).getValue());
     }
+
     @EventHandler
     public void onDamage(EntityDamageByEntityEvent e) {
-            if (e.getDamager() instanceof Player player && e.getEntity() instanceof org.bukkit.entity.EnderDragon) {
-                    Double damage;
-                    if (!damages.containsKey(player.getUniqueId())) {
-                        damages.put(player.getUniqueId(), e.getDamage());
-                    } else {
-                        damage = damages.get(player.getUniqueId());
-                        damages.replace(player.getUniqueId(), damage+e.getDamage());
-                    }
-                }
+        if (e.getDamager() instanceof Player player && e.getEntity() instanceof org.bukkit.entity.EnderDragon) {
+            Double damage;
+            if (!damages.containsKey(player.getUniqueId())) {
+                damages.put(player.getUniqueId(), e.getDamage());
+            } else {
+                damage = damages.get(player.getUniqueId());
+                damages.replace(player.getUniqueId(), damage + e.getDamage());
+            }
         }
-
-        // Ищешь коммент от гпт? А хуй те не найдёшь, плуг то я сам писал лол
+    }
 
     @EventHandler
     public void onDragonDeath(EntityDeathEvent e) {
         if (e.getEntity() instanceof org.bukkit.entity.EnderDragon dragon) {
             World world = Bukkit.getWorld("world_the_end");
             int x = dragon.getDragonBattle().getEndPortalLocation().getBlockX();
-            int y = dragon.getDragonBattle().getEndPortalLocation().getBlockY()+4;
+            int y = dragon.getDragonBattle().getEndPortalLocation().getBlockY() + 4;
             int z = dragon.getDragonBattle().getEndPortalLocation().getBlockZ();
             Location blockLocation = new Location(world, x, y, z);
             Block block = blockLocation.getBlock();
-            if (dragon.getDragonBattle()!=null) {
+
+            if (dragon.getDragonBattle() != null) {
                 if (!dragon.getDragonBattle().hasBeenPreviouslyKilled()) {
-                    runner.startTimer(() -> {
-                        int time = 1;
-                        time++;
+                    final int[] eggCheckTaskId = {0};
+                    eggCheckTaskId[0] = runner.startTimer(() -> {
                         if (block.getType() == Material.DRAGON_EGG) {
                             block.setType(Material.AIR);
-                            runner.cancelTask(runner.getTaskdId());
-                            time = 0;
+                            // Отменяем задачу по сохраненному ID
+                            runner.cancelTask(eggCheckTaskId[0]);
                         }
-                        if (time==0) {
-                            runner.cancelTask(runner.getTaskdId());
-                        }
-
-                    }, 0, 1);
-
+                    }, 0, 1L);
                 }
             }
-
 
             double maxDamage = 0.0;
             UUID maxPlayerUUID = null;
@@ -117,6 +110,7 @@ public class EnderDragon implements Listener {
                     maxPlayerUUID = entry.getKey();
                 }
             }
+
             if (maxPlayerUUID != null) {
                 Player winner = Bukkit.getPlayer(maxPlayerUUID);
                 if (winner != null && winner.isOnline()) {
@@ -130,14 +124,11 @@ public class EnderDragon implements Listener {
                     }
                     itemStack.setItemMeta(itemMeta);
                     winner.getInventory().addItem(itemStack);
-                    
                 }
             }
 
             plugin.getActions().execute(config.getActionsOnDeath());
-
             damages.clear();
-
         }
     }
 }

@@ -15,12 +15,10 @@ public interface Runner {
 
     void runLaterAsync(@NotNull Runnable task, long delayTicks);
 
-    void startTimer(@NotNull Runnable task, long delayTicks, long periodTicks);
+    int startTimer(@NotNull Runnable task, long delayTicks, long periodTicks);
 
     void startTimerAsync(@NotNull Runnable task, long delayTicks, long periodTicks);
 
     void cancelTasks();
     void cancelTask(int taskId);
-    int getTaskdId();
-
 }

@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="TreexEnd:jar">
+    <output-path>$USER_HOME$/Desktop/my pl</output-path>
+    <root id="archive" name="TreexEnd.jar">
+      <element id="module-output" name="TreexEnd" />
+    </root>
+  </artifact>
+</component>

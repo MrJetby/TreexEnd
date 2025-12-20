@@ -47,11 +47,10 @@ public class SchedulerHandler {
             return;
         }
 
-        runner.startTimer(() -> {
-
+        task = runner.startTimer(() -> {
             for (int i = 0; i < scheduler.getPreStartTimes().size(); i++) {
                 int timeBefore = scheduler.getPreStartTimes().get(i);
-                if (timeBefore==getSecondsUntilStart()) {
+                if (timeBefore == getSecondsUntilStart()) {
                     List<String> preStartActions = new ArrayList<>(scheduler.getPreStartActions());
                     preStartActions.replaceAll(s -> PlaceholderAPI.setPlaceholders(null, s));
                     plugin.getActions().execute(preStartActions);
@@ -63,9 +62,9 @@ public class SchedulerHandler {
             if (currentTime >= time_to_start) {
                 startEvent();
                 calculateTimeToStart();
-                task = runner.getTaskdId();
+
                 runner.cancelTask(task);
-                task = 0;
+                start();
             }
         }, 0, 20L);
     }
@@ -134,14 +133,19 @@ public class SchedulerHandler {
     private void startEvent() {
         plugin.getActions().execute(scheduler.getOnStart());
 
-        if (runner.getTaskdId() != 0) {
-            runner.cancelTask(runner.getTaskdId());
+        if (task != 0) {
+            runner.cancelTask(task);
         }
 
-        runner.startTimer(() -> {
+        task = runner.startTimer(() -> {
             if (plugin.getEvent().getTimer() <= 0) {
+
                 plugin.getActions().execute(scheduler.getOnEnd());
-                runner.cancelTask(runner.getTaskdId());
+
+                runner.cancelTask(task);
+                task = 0;
+
+                start();
             }
         }, 0, 20L);
     }
@@ -149,6 +153,7 @@ public class SchedulerHandler {
     public void stop() {
         if (task != 0) {
             runner.cancelTask(task);
+            task = 0;
         }
     }
 
@@ -156,5 +161,4 @@ public class SchedulerHandler {
         long now = System.currentTimeMillis() / 1000;
         return Math.max(0, time_to_start - now);
     }
-
 }

@@ -133,10 +133,18 @@ public class Yaml implements StorageType {
 
     @Override
     public void removeCache(@NotNull Location location) {
-        if (location == null) return;
+        if (location == null) {
+            Logger.warn("Attempted to remove null location from cache");
+            return;
+        }
 
         plugin.getRunner().runAsync(() ->{
-            locations.put(location, -1);
+            locations.remove(location);
+            egg_price.remove(location);
+
+            if (plugin.getCfg().isDebug()) {
+                Logger.info("Removed location from cache: " + serializeLocation(location));
+            }
         });
     }
 
